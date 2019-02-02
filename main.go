@@ -1,6 +1,8 @@
 package main
 
 import (
+	dao "herald-api/dao"
+	song "herald-api/models"
 	"log"
 	"net/http"
 	"time"
@@ -8,110 +10,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/gorilla/mux"
-	"gopkg.in/mgo.v2"
 )
-
-// Song Struct
-type Song struct {
-	ID        bson.ObjectId `bson:"_id" json:"id"`
-	User      string        `bson:"user" json:"user"`
-	Preferred bool          `bson:"preferred" json:"preferred"`
-	Name      string        `bson:"name" json:"name"`
-	Source    string        `bson:"source" json:"source"`
-	Link      string        `bson:"link" json:"link"`
-	Timestamp time.Time     `bson:"timestamp" json:"timestamp"`
-}
-
-// HeraldDAO struct - Herald Data Access Object
-type HeraldDAO struct {
-	Server   string
-	Database string
-}
-
-// Global DB Object
-var db *mgo.Database
-
-// Collection name
-const (
-	COLLECTION = "songs"
-)
-
-// Connect - Establish a connection to the db
-func (hDAO *HeraldDAO) Connect() {
-	session, err := mgo.Dial(hDAO.Server)
-	if err != nil {
-		log.Fatal(err)
-	}
-	db = session.DB(hDAO.Database)
-}
-
-/////////////////
-// CRUD functions for song collection in the Herald DB
-/////////////////
-
-/*
-InsertHeraldSong - Insert song into the Herald DB songs collection
-song - song to be inserted
-*/
-func (hDAO *HeraldDAO) InsertHeraldSong(song Song) error {
-	err := db.C(COLLECTION).Insert(&song)
-	return err
-}
-
-/*
-GetHeraldSongs - Return list of herald songs
-rpp - Number of results per page
-page - Page number to start from - Pages are 0 indexed
-*/
-func (hDAO *HeraldDAO) GetHeraldSongs(rpp int, page int) ([]Song, error) {
-	var songs []Song
-	// Find all songs, sort by timestamp, skip to page, limit results
-	err := db.C(COLLECTION).Find(bson.M{}).Sort("-timestamp").Skip(rpp * page).Limit(rpp).All(&songs)
-	if err != nil {
-		panic(err)
-	}
-	return songs, err
-}
-
-/*
-GetHeraldUserSongs - Return list of herald songs the user owns
-*/
-func (hDAO *HeraldDAO) GetHeraldUserSongs(user string) ([]Song, error) {
-	var songs []Song
-	err := db.C(COLLECTION).Find(bson.M{"user": user}).Sort("-timestamp").All(&songs)
-	if err != nil {
-		panic(err)
-	}
-	return songs, err
-}
-
-/*
-GetHeraldSong - Return information about herald song matching the id
-id - id of the song to be returned
-*/
-func (hDAO *HeraldDAO) GetHeraldSong(id string) (Song, error) {
-	var song Song
-	err := db.C(COLLECTION).FindId(bson.ObjectIdHex(id)).One(&song)
-	return song, err
-}
-
-/*
-UpdateHeraldSong - Update information of song in the Herald DB
-song - updated song information
-*/
-func (hDAO *HeraldDAO) UpdateHeraldSong(song Song) error {
-	err := db.C(COLLECTION).UpdateId(song.ID, &song)
-	return err
-}
-
-/*
-DeleteHeraldSong - Remove song from Herald DB songs collection
-song - song to be removed
-*/
-func (hDAO *HeraldDAO) DeleteHeraldSong(song Song) error {
-	err := db.C(COLLECTION).Remove(&song)
-	return err
-}
 
 ///////////////////
 // Helper Functions
@@ -181,7 +80,31 @@ func DeleteClip(w http.ResponseWriter, r *http.Request) {
 
 }
 
+/*
+ID        bson.ObjectId `bson:"_id" json:"id"`
+	User      string        `bson:"user" json:"user"`
+	Preferred bool          `bson:"preferred" json:"preferred"`
+	Name      string        `bson:"name" json:"name"`
+	Source    string        `bson:"source" json:"source"`
+	Link      string        `bson:"link" json:"link"`
+	Timestamp time.Time     `bson:"timestamp" json:"timestamp"`
+*/
+
 func main() {
+	song := song.Song{
+		ID:        bson.NewObjectId(),
+		User:      "JimDaGuy",
+		Preferred: true,
+		Name:      "Bamb",
+		Source:    "audiophiler",
+		Link:      "google.com",
+		Timestamp: time.Now(),
+	}
+
+	songsDAO := dao.SongsDAO{Database: "go-harold", Server: "localhost"}
+	songsDAO.Connect()
+	songsDAO.InsertHeraldSong(song)
+
 	router := mux.NewRouter()
 	router.HandleFunc("/getApSongs", GetAudiophilerSonglist).Methods("GET")
 	router.HandleFunc("/getApSong", GetAudiophilerSong).Methods("GET")
