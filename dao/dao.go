@@ -1,7 +1,7 @@
 package dao
 
 import (
-	song "herald-api/models"
+	song "github.com/jimdaguy/herald-api/models"
 
 	"log"
 
@@ -57,6 +57,9 @@ func (hDAO *SongsDAO) GetHeraldSongs(rpp int, page int) ([]song.Song, error) {
 	if err != nil {
 		panic(err)
 	}
+	if songs == nil {
+		songs = []song.Song{}
+	}
 	return songs, err
 }
 
@@ -68,6 +71,24 @@ func (hDAO *SongsDAO) GetHeraldUserSongs(user string) ([]song.Song, error) {
 	err := db.C(COLLECTION).Find(bson.M{"user": user}).Sort("-timestamp").All(&songs)
 	if err != nil {
 		panic(err)
+	}
+	if songs == nil {
+		songs = []song.Song{}
+	}
+	return songs, err
+}
+
+/*
+GetHeraldUserPreferredSongs - Return list of herald songs the user owns
+*/
+func (hDAO *SongsDAO) GetHeraldUserPreferredSongs(user string) ([]song.Song, error) {
+	var songs []song.Song
+	err := db.C(COLLECTION).Find(bson.M{"user": user, "preferred": true}).Sort("-timestamp").All(&songs)
+	if err != nil {
+		panic(err)
+	}
+	if songs == nil {
+		songs = []song.Song{}
 	}
 	return songs, err
 }
